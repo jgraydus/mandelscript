@@ -1,0 +1,245 @@
+<!
+//*****
+//javascript mandelbrot set viewer
+//
+//Joshua Graydus 2009
+//
+//note:
+//-i do not recommend trying to run this on a slow computer
+//-probably (hopefully) doesn't work in IE
+//*****
+--!>
+
+<html>
+<head>
+	<title> Javascript Mandelbrot </title>
+
+<script type="application/x-javascript">
+////////////////////////////////////////
+//global objects
+
+//canvas object and its drawing context
+var canvas;
+var ctx;
+
+//width and height of the canvas area
+var MAX_WIDTH;
+var MAX_HEIGHT;
+
+
+//an interval is an object which has a function and an amount of time
+//attached to it.  the javascript engine will automatically call the
+//specified function at intervals of the specified time.  this lets
+//us draw to the screen in increments as the calculations are being done
+//
+var interval;
+
+//keep track of what pixel to draw next
+var current_x = 0;
+var current_y = 0;
+
+//real unit coordinates corrosponding with the corners of the drawing area
+var canvas_right  = .5;
+var canvas_left   = -2;
+var canvas_top    = 1.25;
+var canvas_bottom = -1.25;
+
+//this will let us change the size of each 'pixel' drawn
+var grid_size = 1;
+
+/////////////////////////////////////////
+
+
+//starts the drawing process
+function start() {
+	interval = setInterval('draw()',1);
+};
+
+//this merely pauses drawing.  the canvas is not cleared
+//and no changes are made to any values
+function stop() {
+	clearInterval(interval);
+};
+
+//stops drawing, clears the canvas, returns the pixel counters to zero
+function clearcanvas() {
+	stop();
+
+	ctx.fillStyle = "rgb(255,255,255)";
+	ctx.fillRect(0,0,MAX_WIDTH,MAX_HEIGHT);
+
+	current_x=0;
+	current_y=0;
+};
+
+//clears the canvas and returns the coordinates to defaults
+function reset() {
+	clearcanvas();
+
+	canvas_right  = .5;
+	canvas_left   = -2;
+	canvas_top    = 1.25;
+	canvas_bottom = -1.25;
+};
+
+//changes how many pixels are drawn for each calculation
+//allowing for faster but less detailed images
+function grid(n) {
+	clearcanvas();
+	grid_size=n;
+	start();
+};
+
+//initialize the program.  called when page loads
+function init() {
+
+	//create the canvas object and assign it a 2d context to draw on
+	canvas = document.getElementById("canvas_1");
+	ctx = canvas.getContext("2d");
+
+	//get the pixel size of the canvas
+	MAX_WIDTH = canvas.width;
+	MAX_HEIGHT = canvas.height;
+
+	//add a function to the canvas that zooms in when the user clicks on a point
+	canvas.addEventListener("click",
+		function(e) { 
+			//get the x and y position of the user's click
+			var x = e.clientX - canvas.offsetLeft;
+			var y = e.clientY - canvas.offsetTop;
+
+			//find the current dimensions of the drawing area
+			var width  = canvas_right - canvas_left;
+			var height = canvas_top - canvas_bottom;
+
+			//translate x and y to real units
+			var xcoord = x * (width  / MAX_WIDTH ) + canvas_left;
+			var ycoord = y * (height / MAX_HEIGHT) + canvas_bottom;
+
+			//change the coordinates of the canvas
+			canvas_left   = xcoord - (width  / 8);  // dividing by 8 causes a 4 times zoom
+			canvas_right  = xcoord + (width  / 8);
+			canvas_bottom = ycoord - (height / 8);
+			canvas_top    = ycoord + (height / 8);
+
+			//erase the current drawing and start over
+			clearcanvas();
+			start();
+
+		}, false);
+};
+
+//draw() is called by the interval set in start()
+//
+//it draws a chunk of the image then stops so the
+//canvas will be updated
+//
+//change CHUNK to adjust how many pixels are drawn
+//each time.  default: CHUNK=MAX_WIDTH draws one
+//line each call
+function draw () {
+	//stop if we're at the end
+	if(current_x*current_y > MAX_WIDTH*MAX_HEIGHT) {stop();};
+
+	//number of pixels drawn each call
+	var CHUNK=MAX_WIDTH*10;
+
+	////////////
+	var width;
+	var height;
+	var cr;
+	var ci;
+	var zr;
+	var zi;
+	var zr2;
+	var zi2;
+	var i;
+	////////////
+
+	//draw CHUNK number of pixels
+	for (var n=0; n<=CHUNK; n++) {
+		//////////////////////////////////////
+		//convert the screen coordinates to a complex number
+		width  = canvas_right - canvas_left;
+		height = canvas_top - canvas_bottom;
+		cr = (current_x * (width  / MAX_WIDTH )) + canvas_left;
+		ci = (current_y * (height / MAX_HEIGHT)) + canvas_bottom;
+
+		//set z1
+		zr = cr;
+		zi = ci;
+
+		//////////////////////////////////////
+		//calculate one pixel
+		//
+		//do (z^2+z) until z > 2 (or n times)
+		for (i=1; i<1000; i++) {
+
+			zr2 = zr*zr;
+			zi2 = zi*zi;
+
+			//stop when z passes 2
+			if(zr2+zi2>4){break;};
+
+			zi = (2 * zr * zi) + ci;
+			zr = zr2 - zi2 + cr
+
+		};
+
+		//////////////////////////////////////
+		//choose a color for the pixel
+		//	note: i just experimented with these numbers until it looked decent
+		var c = i%32;
+	
+		if(i<999){ctx.fillStyle = "rgb(" + (c*5) + ", " + (c*7) + ", " + (c*13) + ")"; }
+		else{
+			ctx.fillStyle = "rgb(0,0,0)";
+		
+		};
+		ctx.fillRect(current_x, current_y, grid_size, grid_size);
+
+		//////////////////////////////////////
+		//point to the next pixel
+		if(current_x<MAX_WIDTH){current_x+=grid_size;}
+		else{current_x=0;current_y+=grid_size;};
+
+	};	
+};
+
+</script>
+
+<style type="text/css">
+	canvas { border: 1px solid black; }
+</style>
+
+</head>
+
+
+
+<body onload="init()">
+
+<div style="float:left;">
+
+<canvas id="canvas_1" width="500" height="500"></canvas>
+</div>
+<div style="float:right;padding:10px;">
+Click on the image to zoom<br><br>
+
+<input type="button" value="-  START   -" onclick="start()">
+			
+<input type="button" value="-   STOP   -"  onclick="stop()">
+			
+<input type="button" value="-  CLEAR  -" onclick="clearcanvas()">
+		
+<input type="button" value="-  RESET  -" onclick="reset()">
+
+<br><br>
+Grid Size: (higher number draws faster with less detail)<br>
+1:<input type="radio" name="grid" value="1" onclick="grid(1)">
+2:<input type="radio" name="grid" value="2" onclick="grid(2)">
+4:<input type="radio" name="grid" value="4" onclick="grid(4)">
+</div>
+
+
+</body>
+</html>
